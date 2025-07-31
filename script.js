@@ -11,8 +11,7 @@ class Game2048 {
         this.newGameBtn = document.getElementById('newGameBtn');
         this.keepPlayingBtn = document.querySelector('.keep-playing-button');
         this.retryBtn = document.querySelector('.retry-button');
-        
-        console.log('Game2048 constructor called');
+        this.isAnimating = false;
         
         // 页面加载时自动开始游戏
         this.init();
@@ -43,12 +42,16 @@ class Game2048 {
         
         // 重试按钮
         if (this.retryBtn) {
-            this.retryBtn.addEventListener('click', () => this.init());
+            this.retryBtn.addEventListener('click', () => {
+                this.init();
+            });
         }
         
         // 继续游戏按钮
         if (this.keepPlayingBtn) {
-            this.keepPlayingBtn.addEventListener('click', () => this.hideMessage());
+            this.keepPlayingBtn.addEventListener('click', () => {
+                this.hideMessage();
+            });
         }
         
         // 触摸控制
@@ -102,6 +105,8 @@ class Game2048 {
     }
     
     handleKeyPress(e) {
+        if (this.isAnimating) return;
+        
         const keyMap = {
             'ArrowUp': 'up',
             'ArrowDown': 'down',
@@ -120,76 +125,96 @@ class Game2048 {
         }
     }
     
-    move(direction) {
+    async move(direction) {
+        if (this.isAnimating) return;
+        
         const previousGrid = this.grid.map(row => [...row]);
+        const moved = this.performMove(direction);
+        
+        if (moved) {
+            this.isAnimating = true;
+            await this.animateMove(previousGrid, this.grid);
+            
+            this.addNewTile();
+            this.updateDisplay();
+            
+            setTimeout(() => {
+                this.isAnimating = false;
+                
+                if (this.hasWon() && !this.gameMessage.classList.contains('game-won')) {
+                    this.showMessage('You Win!', 'game-won');
+                } else if (this.isGameOver()) {
+                    this.showMessage('Game Over!', 'game-over');
+                }
+            }, 200);
+        }
+    }
+    
+    performMove(direction) {
         let moved = false;
+        const newGrid = this.grid.map(row => [...row]);
         
         switch (direction) {
             case 'left':
-                moved = this.moveLeft();
+                moved = this.moveLeft(newGrid);
                 break;
             case 'right':
-                moved = this.moveRight();
+                moved = this.moveRight(newGrid);
                 break;
             case 'up':
-                moved = this.moveUp();
+                moved = this.moveUp(newGrid);
                 break;
             case 'down':
-                moved = this.moveDown();
+                moved = this.moveDown(newGrid);
                 break;
         }
         
         if (moved) {
-            this.addNewTile();
-            this.updateDisplay();
-            
-            if (this.hasWon() && !this.gameMessage.classList.contains('game-won')) {
-                this.showMessage('You Win!', 'game-won');
-            } else if (this.isGameOver()) {
-                this.showMessage('Game Over!', 'game-over');
-            }
+            this.grid = newGrid;
         }
+        
+        return moved;
     }
     
-    moveLeft() {
+    moveLeft(grid) {
         let moved = false;
         
         for (let row = 0; row < this.size; row++) {
-            const newRow = this.slideAndMerge(this.grid[row]);
-            if (JSON.stringify(newRow) !== JSON.stringify(this.grid[row])) {
+            const newRow = this.slideAndMerge(grid[row]);
+            if (JSON.stringify(newRow) !== JSON.stringify(grid[row])) {
                 moved = true;
-                this.grid[row] = newRow;
+                grid[row] = newRow;
             }
         }
         
         return moved;
     }
     
-    moveRight() {
+    moveRight(grid) {
         let moved = false;
         
         for (let row = 0; row < this.size; row++) {
-            const reversed = [...this.grid[row]].reverse();
+            const reversed = [...grid[row]].reverse();
             const newRow = this.slideAndMerge(reversed).reverse();
-            if (JSON.stringify(newRow) !== JSON.stringify(this.grid[row])) {
+            if (JSON.stringify(newRow) !== JSON.stringify(grid[row])) {
                 moved = true;
-                this.grid[row] = newRow;
+                grid[row] = newRow;
             }
         }
         
         return moved;
     }
     
-    moveUp() {
+    moveUp(grid) {
         let moved = false;
         
         for (let col = 0; col < this.size; col++) {
-            const column = [this.grid[0][col], this.grid[1][col], this.grid[2][col], this.grid[3][col]];
+            const column = [grid[0][col], grid[1][col], grid[2][col], grid[3][col]];
             const newColumn = this.slideAndMerge(column);
             if (JSON.stringify(newColumn) !== JSON.stringify(column)) {
                 moved = true;
                 for (let row = 0; row < this.size; row++) {
-                    this.grid[row][col] = newColumn[row];
+                    grid[row][col] = newColumn[row];
                 }
             }
         }
@@ -197,17 +222,17 @@ class Game2048 {
         return moved;
     }
     
-    moveDown() {
+    moveDown(grid) {
         let moved = false;
         
         for (let col = 0; col < this.size; col++) {
-            const column = [this.grid[0][col], this.grid[1][col], this.grid[2][col], this.grid[3][col]];
+            const column = [grid[0][col], grid[1][col], grid[2][col], grid[3][col]];
             const reversed = [...column].reverse();
             const newColumn = this.slideAndMerge(reversed).reverse();
             if (JSON.stringify(newColumn) !== JSON.stringify(column)) {
                 moved = true;
                 for (let row = 0; row < this.size; row++) {
-                    this.grid[row][col] = newColumn[row];
+                    grid[row][col] = newColumn[row];
                 }
             }
         }
@@ -217,20 +242,43 @@ class Game2048 {
     
     slideAndMerge(line) {
         const newLine = line.filter(cell => cell !== 0);
+        const merged = [];
         
-        for (let i = 0; i < newLine.length - 1; i++) {
-            if (newLine[i] === newLine[i + 1]) {
-                newLine[i] *= 2;
-                this.score += newLine[i];
-                newLine.splice(i + 1, 1);
+        for (let i = 0; i < newLine.length; i++) {
+            if (i < newLine.length - 1 && newLine[i] === newLine[i + 1]) {
+                const mergedValue = newLine[i] * 2;
+                merged.push(mergedValue);
+                this.score += mergedValue;
+                i++; // 跳过下一个元素
+            } else {
+                merged.push(newLine[i]);
             }
         }
         
-        while (newLine.length < this.size) {
-            newLine.push(0);
+        while (merged.length < this.size) {
+            merged.push(0);
         }
         
-        return newLine;
+        return merged;
+    }
+    
+    async animateMove(previousGrid, newGrid) {
+        const tiles = this.gameContainer.querySelectorAll('.tile');
+        
+        // 标记需要移动的方块
+        tiles.forEach(tile => {
+            tile.classList.add('tile-moving');
+        });
+        
+        // 添加分数变化动画
+        this.scoreElement.classList.add('score-change');
+        setTimeout(() => {
+            this.scoreElement.classList.remove('score-change');
+        }, 500);
+        
+        return new Promise(resolve => {
+            setTimeout(resolve, 200);
+        });
     }
     
     addNewTile() {
@@ -271,7 +319,7 @@ class Game2048 {
         
         setTimeout(() => {
             tile.classList.remove('tile-new');
-        }, 200);
+        }, 300);
         
         this.gameContainer.appendChild(tile);
     }
@@ -342,6 +390,5 @@ function initializeGame() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeGame);
 } else {
-    // DOM已经加载完成，直接初始化
     initializeGame();
 }
