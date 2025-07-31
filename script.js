@@ -29,9 +29,17 @@ class Game2048 {
     
     setupEventListeners() {
         document.addEventListener('keydown', (e) => this.handleKeyPress(e));
-        this.newGameBtn.addEventListener('click', () => this.init());
-        this.retryBtn.addEventListener('click', () => this.init());
-        this.keepPlayingBtn.addEventListener('click', () => this.hideMessage());
+        
+        // 确保按钮元素存在再添加事件监听器
+        if (this.newGameBtn) {
+            this.newGameBtn.addEventListener('click', () => this.init());
+        }
+        if (this.retryBtn) {
+            this.retryBtn.addEventListener('click', () => this.init());
+        }
+        if (this.keepPlayingBtn) {
+            this.keepPlayingBtn.addEventListener('click', () => this.hideMessage());
+        }
         
         this.setupTouchControls();
     }
@@ -315,6 +323,12 @@ class Game2048 {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// 确保DOM完全加载后再初始化游戏
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        new Game2048();
+    });
+} else {
+    // DOM已经加载完成，直接初始化
     new Game2048();
-});
+}
