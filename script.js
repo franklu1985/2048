@@ -12,16 +12,14 @@ class Game2048 {
         this.keepPlayingBtn = document.querySelector('.keep-playing-button');
         this.retryBtn = document.querySelector('.retry-button');
         
-        // 调试日志
         console.log('Game2048 constructor called');
-        console.log('newGameBtn found:', this.newGameBtn);
         
+        // 页面加载时自动开始游戏
         this.init();
         this.setupEventListeners();
     }
     
     init() {
-        console.log('Initializing new game...');
         this.grid = Array(this.size).fill().map(() => Array(this.size).fill(0));
         this.score = 0;
         this.updateScore();
@@ -30,30 +28,30 @@ class Game2048 {
         this.addNewTile();
         this.updateDisplay();
         this.hideMessage();
-        console.log('New game initialized');
     }
     
     setupEventListeners() {
+        // 键盘控制
         document.addEventListener('keydown', (e) => this.handleKeyPress(e));
         
-        // 确保按钮元素存在再添加事件监听器
+        // New Game按钮
         if (this.newGameBtn) {
-            console.log('Adding click listener to newGameBtn');
             this.newGameBtn.addEventListener('click', () => {
-                console.log('New Game button clicked!');
                 this.init();
             });
-        } else {
-            console.error('newGameBtn not found!');
         }
         
+        // 重试按钮
         if (this.retryBtn) {
             this.retryBtn.addEventListener('click', () => this.init());
         }
+        
+        // 继续游戏按钮
         if (this.keepPlayingBtn) {
             this.keepPlayingBtn.addEventListener('click', () => this.hideMessage());
         }
         
+        // 触摸控制
         this.setupTouchControls();
     }
     
@@ -338,16 +336,7 @@ class Game2048 {
 
 // 确保DOM完全加载后再初始化游戏
 function initializeGame() {
-    console.log('DOM loaded, initializing game...');
-    const game = new Game2048();
-    
-    // 添加事件委托作为备用方案
-    document.addEventListener('click', (e) => {
-        if (e.target.id === 'newGameBtn' || e.target.classList.contains('new-game-btn')) {
-            console.log('New Game button clicked via event delegation!');
-            game.init();
-        }
-    });
+    new Game2048();
 }
 
 if (document.readyState === 'loading') {
