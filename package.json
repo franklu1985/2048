@@ -1,0 +1,17 @@
+{
+  "name": "2048-game",
+  "version": "1.0.0",
+  "description": "A 2048 game that can be deployed to Vercel",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["2048", "game", "vercel"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^4.4.5"
+  }
+}
